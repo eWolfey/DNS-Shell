@@ -19,5 +19,12 @@
 <li>DNS-Shell direct mode: sudo python DNS-Shell.py -l -d [Server IP]</li>
 <li>DNS-Shell recursive mode: sudo python DNS-Shell.py -l -r [Domain]</li>
 </ul>
+
+<h2>Firefalc0n updates</h2>
+<ul>
+<li>Change _index by a unique index by target, to avoid multi sessions (will be implemented soon), ex : XX </li>
+<li>Change _domain_name by your domain name that you control, ex : google.com</li>
+<li>Change _domain_root by the domain root, ex : google</li>
+</ul>
 <p>
 
